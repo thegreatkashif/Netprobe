@@ -1,6 +1,5 @@
 import argparse
 import time
-from scanner.ports import scan_ports
 
 from scanner.discovery import (
     validate_network,
@@ -8,6 +7,8 @@ from scanner.discovery import (
     discover_hosts,
     get_hostname,
 )
+from scanner.ports import scan_ports
+from scanner.network import detect_local_network
 
 
 def main():
@@ -18,19 +19,36 @@ def main():
 
     parser.add_argument(
         "network",
-        help="Target network in CIDR notation (e.g. 192.168.1.0/24)"
+        nargs="?",
+        help="Target network in CIDR format (e.g. 192.168.1.0/24)"
+    )
+
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Automatically detect and scan the local network"
     )
 
     args = parser.parse_args()
 
-    network = validate_network(args.network)
+    # Determine network
+    if args.auto:
+        network = detect_local_network()
+    else:
+        if args.network is None:
+            parser.error("Please provide a network or use --auto.")
+        network = validate_network(args.network)
 
     if network is None:
         print(f"✗ Invalid network: {args.network}")
         return
 
     print("✓ Valid Network")
-    print(f"Target Network: {network}")
+
+    if args.auto:
+        print(f"Detected Network: {network}")
+    else:
+        print(f"Target Network: {network}")
 
     hosts = generate_hosts(network)
 
@@ -43,22 +61,23 @@ def main():
     end = time.perf_counter()
 
     if online_hosts:
-       print(f"{'IP Address':<18} {'Hostname':<20} Open Ports")
-       print("-" * 60)
+        print(f"{'IP Address':<18} {'Hostname':<25} {'Open Ports'}")
+        print("-" * 70)
 
-       for host in online_hosts:
-           hostname = get_hostname(host)
-           ports = scan_ports(host)
+        for host in online_hosts:
+            hostname = get_hostname(host)
+            ports = scan_ports(host)
 
-           port_text = ", ".join(map(str, ports)) if ports else "None"
+            port_text = ", ".join(map(str, ports)) if ports else "None"
 
-           print(f"{str(host):<18} {hostname:<20} {port_text}")
+            print(f"{str(host):<18} {hostname:<25} {port_text}")
+
     else:
-         print("No online hosts found.")
+        print("No online hosts found.")
 
     print("\nScan Complete")
-    print(f"{len(online_hosts)} hosts discovered")
-    print(f"Scan completed in {end - start:.2f} seconds")
+    print(f"Hosts discovered : {len(online_hosts)}")
+    print(f"Time taken       : {end - start:.2f} seconds")
 
 
 if __name__ == "__main__":

@@ -41,6 +41,27 @@ def is_host_alive(host):
     else:
         return "1 received" in output or "bytes from" in output
 
+def tcp_probe(host):
+    """
+    Returns True if any common TCP port accepts a connection.
+    """
+
+    common_ports = [22, 80, 443, 445, 3389]
+
+    for port in common_ports:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.3)
+
+                if sock.connect_ex((str(host), port)) == 0:
+                    return True
+
+        except OSError:
+            pass
+
+    return False
+
+
 def get_hostname(host):
     """
     Resolve the hostname of an IP address.
@@ -55,20 +76,22 @@ def get_hostname(host):
         return "Unknown"
 
 def discover_hosts(hosts):
-    """
-    Discover reachable hosts using multiple threads.
-    """
-
     online_hosts = []
 
-    with ThreadPoolExecutor(max_workers=50) as executor:
-        results = executor.map(
-            lambda host: (host, is_host_alive(host)),
-            hosts
-        )
+    def check(host):
+        if is_host_alive(host):
+            return host
 
-        for host, alive in results:
-            if alive:
-                online_hosts.append(host)
+        if tcp_probe(host):
+            return host
+
+        return None
+
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        results = executor.map(check, hosts)
+
+        for result in results:
+            if result is not None:
+                online_hosts.append(result)
 
     return online_hosts
