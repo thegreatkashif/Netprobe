@@ -1,7 +1,10 @@
 import argparse
-from scanner.discovery import validate_network
-from scanner.discovery import generate_hosts
 
+from scanner.discovery import (
+    validate_network,
+    generate_hosts,
+    discover_hosts,
+)
 
 
 def main():
@@ -25,14 +28,21 @@ def main():
 
     print("✓ Valid Network")
     print(f"Target Network: {network}")
+
     hosts = generate_hosts(network)
 
-    print("\nHosts:")
+    print("\nScanning...\n")
 
-    for host in hosts:
-        print(host)
- 
-    print(f"\nTotal Hosts: {len(hosts)}")
+    online_hosts = discover_hosts(hosts)
+
+    if online_hosts:
+        for host in online_hosts:
+            print(f"{str(host):<18} Online")
+    else:
+        print("No online hosts found.")
+
+    print("\nScan Complete")
+    print(f"{len(online_hosts)} hosts discovered")
 
 
 if __name__ == "__main__":
