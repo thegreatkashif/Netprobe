@@ -3,7 +3,7 @@ import platform
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 import socket
-
+from tqdm import tqdm 
 
 def validate_network(network: str):
     """
@@ -75,6 +75,10 @@ def get_hostname(host):
     except Exception:
         return "Unknown"
 
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
+
+
 def discover_hosts(hosts):
     online_hosts = []
 
@@ -90,7 +94,12 @@ def discover_hosts(hosts):
     with ThreadPoolExecutor(max_workers=100) as executor:
         results = executor.map(check, hosts)
 
-        for result in results:
+        for result in tqdm(
+            results,
+            total=len(hosts),
+            desc="Scanning Hosts",
+            unit="host"
+        ):
             if result is not None:
                 online_hosts.append(result)
 

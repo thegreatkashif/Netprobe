@@ -1,0 +1,7 @@
+IP Address,Hostname,Open Ports
+192.168.31.1,jiofiber.local.html,"80, 443"
+192.168.31.17,POCOF1-POCOF1.lan,None
+192.168.31.93,Google-Home-Mini.lan,None
+192.168.31.149,kashhiiifff.lan,445
+192.168.31.154,debian.lan,"80, 445"
+192.168.31.219,debian-11.lan,"80, 445"

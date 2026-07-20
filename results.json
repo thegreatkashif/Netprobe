@@ -1,0 +1,38 @@
+[
+    {
+        "ip": "192.168.31.1",
+        "hostname": "jiofiber.local.html",
+        "ports": [
+            80,
+            443
+        ]
+    },
+    {
+        "ip": "192.168.31.93",
+        "hostname": "Google-Home-Mini.lan",
+        "ports": []
+    },
+    {
+        "ip": "192.168.31.149",
+        "hostname": "kashhiiifff.lan",
+        "ports": [
+            445
+        ]
+    },
+    {
+        "ip": "192.168.31.154",
+        "hostname": "debian.lan",
+        "ports": [
+            80,
+            445
+        ]
+    },
+    {
+        "ip": "192.168.31.219",
+        "hostname": "debian-11.lan",
+        "ports": [
+            80,
+            445
+        ]
+    }
+]
