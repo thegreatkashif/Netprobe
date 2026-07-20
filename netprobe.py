@@ -1,4 +1,7 @@
 import argparse
+from scanner.discovery import validate_network
+from scanner.discovery import generate_hosts
+
 
 
 def main():
@@ -14,7 +17,22 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"Target Network: {args.network}")
+    network = validate_network(args.network)
+
+    if network is None:
+        print(f"✗ Invalid network: {args.network}")
+        return
+
+    print("✓ Valid Network")
+    print(f"Target Network: {network}")
+    hosts = generate_hosts(network)
+
+    print("\nHosts:")
+
+    for host in hosts:
+        print(host)
+ 
+    print(f"\nTotal Hosts: {len(hosts)}")
 
 
 if __name__ == "__main__":
