@@ -1,6 +1,8 @@
 import argparse
 import time
 
+from colorama import Fore, Style, init
+
 from scanner.discovery import (
     validate_network,
     generate_hosts,
@@ -10,6 +12,9 @@ from scanner.discovery import (
 from scanner.ports import scan_ports
 from scanner.network import detect_local_network
 from scanner.exporter import export_json, export_csv
+
+# Initialize Colorama
+init(autoreset=True)
 
 
 def main():
@@ -53,19 +58,19 @@ def main():
         network = validate_network(args.network)
 
     if network is None:
-        print(f"✗ Invalid network: {args.network}")
+        print(Fore.RED + f"✗ Invalid network: {args.network}")
         return
 
-    print("✓ Valid Network")
+    print(Fore.GREEN + "✓ Valid Network")
 
     if args.auto:
-        print(f"Detected Network: {network}")
+        print(Fore.CYAN + f"Detected Network: {network}")
     else:
-        print(f"Target Network: {network}")
+        print(Fore.CYAN + f"Target Network: {network}")
 
     hosts = generate_hosts(network)
 
-    print("\nScanning...\n")
+    print(Fore.YELLOW + "\nScanning...\n")
 
     start = time.perf_counter()
 
@@ -76,7 +81,10 @@ def main():
     results = []
 
     if online_hosts:
-        print(f"{'IP Address':<18} {'Hostname':<25} {'Open Ports'}")
+        print(
+            Fore.MAGENTA
+            + f"{'IP Address':<18} {'Hostname':<25} {'Open Ports'}"
+        )
         print("-" * 70)
 
         for host in online_hosts:
@@ -85,7 +93,12 @@ def main():
 
             port_text = ", ".join(map(str, ports)) if ports else "None"
 
-            print(f"{str(host):<18} {hostname:<25} {port_text}")
+            print(
+                Fore.GREEN
+                + f"{str(host):<18}"
+                + Style.RESET_ALL
+                + f"{hostname:<25} {port_text}"
+            )
 
             results.append(
                 {
@@ -96,19 +109,19 @@ def main():
             )
 
     else:
-        print("No online hosts found.")
+        print(Fore.RED + "No online hosts found.")
 
-    print("\nScan Complete")
-    print(f"Hosts discovered : {len(online_hosts)}")
-    print(f"Time taken       : {end - start:.2f} seconds")
+    print(Fore.CYAN + "\nScan Complete")
+    print(Fore.GREEN + f"Hosts discovered : {len(online_hosts)}")
+    print(Fore.GREEN + f"Time taken       : {end - start:.2f} seconds")
 
     if args.json:
         export_json(args.json, results)
-        print(f"\n✓ JSON report saved to '{args.json}'")
+        print(Fore.GREEN + f"\n✓ JSON report saved to '{args.json}'")
 
     if args.csv:
         export_csv(args.csv, results)
-        print(f"✓ CSV report saved to '{args.csv}'")
+        print(Fore.GREEN + f"✓ CSV report saved to '{args.csv}'")
 
 
 if __name__ == "__main__":
