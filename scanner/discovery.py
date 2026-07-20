@@ -1,6 +1,8 @@
 import ipaddress
 import platform
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
+import socket
 
 
 def validate_network(network: str):
@@ -22,30 +24,51 @@ def generate_hosts(network):
 
 
 def is_host_alive(host):
-    """
-    Returns True if the host responds to a ping.
-    """
     param = "-n" if platform.system().lower() == "windows" else "-c"
 
-    command = ["ping", param, "1", str(host)]
+    command = ["ping", param, "1", "-w", "500", str(host)]
 
     result = subprocess.run(
         command,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        capture_output=True,
+        text=True
     )
 
-    return result.returncode == 0
+    output = result.stdout.lower()
 
+    if platform.system().lower() == "windows":
+        return "ttl=" in output
+    else:
+        return "1 received" in output or "bytes from" in output
+
+def get_hostname(host):
+    """
+    Resolve the hostname of an IP address.
+    Returns 'Unknown' if it cannot be resolved.
+    """
+    try:
+        hostname = socket.gethostbyaddr(str(host))[0]
+        return hostname
+    except socket.herror:
+        return "Unknown"
+    except Exception:
+        return "Unknown"
 
 def discover_hosts(hosts):
     """
-    Return all reachable hosts.
+    Discover reachable hosts using multiple threads.
     """
+
     online_hosts = []
 
-    for host in hosts:
-        if is_host_alive(host):
-            online_hosts.append(host)
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        results = executor.map(
+            lambda host: (host, is_host_alive(host)),
+            hosts
+        )
+
+        for host, alive in results:
+            if alive:
+                online_hosts.append(host)
 
     return online_hosts
