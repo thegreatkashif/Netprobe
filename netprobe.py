@@ -1,5 +1,6 @@
 import argparse
 import time
+from scanner.ports import scan_ports
 
 from scanner.discovery import (
     validate_network,
@@ -42,14 +43,18 @@ def main():
     end = time.perf_counter()
 
     if online_hosts:
-        print(f"{'IP Address':<18} Hostname")
-        print("-" * 40)
+       print(f"{'IP Address':<18} {'Hostname':<20} Open Ports")
+       print("-" * 60)
 
-        for host in online_hosts:
-            hostname = get_hostname(host)
-            print(f"{str(host):<18} {hostname}")
+       for host in online_hosts:
+           hostname = get_hostname(host)
+           ports = scan_ports(host)
+
+           port_text = ", ".join(map(str, ports)) if ports else "None"
+
+           print(f"{str(host):<18} {hostname:<20} {port_text}")
     else:
-        print("No online hosts found.")
+         print("No online hosts found.")
 
     print("\nScan Complete")
     print(f"{len(online_hosts)} hosts discovered")
