@@ -1,0 +1,4 @@
+psutil
+tqdm
+colorama
+pytest
