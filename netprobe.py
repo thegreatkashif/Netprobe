@@ -1,3 +1,6 @@
+__version__ = "1.0.0"
+
+
 import argparse
 import time
 
@@ -27,6 +30,13 @@ def main():
         "network",
         nargs="?",
         help="Target network in CIDR format (e.g. 192.168.1.0/24)"
+    )
+    
+    
+    parser.add_argument(
+    "--version",
+    action="version",
+    version=f"%(prog)s {__version__}"
     )
 
     parser.add_argument(
