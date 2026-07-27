@@ -14,7 +14,7 @@ from scanner.discovery import (
 )
 from scanner.ports import scan_ports
 from scanner.network import detect_local_network
-from scanner.exporter import export_json, export_csv
+from scanner.exporter import export_json, export_csv, export_html
 from scanner.config import load_config
 
 # Initialize Colorama
@@ -62,6 +62,12 @@ def main():
         "--config",
         metavar="FILE",
         help="Path to a JSON config file (ports, timeouts, concurrency)"
+    )
+
+    parser.add_argument(
+        "--html",
+        metavar="FILE",
+        help="Export scan results to a styled HTML report"
     )
 
     args = parser.parse_args()
@@ -162,6 +168,18 @@ def main():
     if args.csv:
         export_csv(args.csv, results)
         print(Fore.GREEN + f"✓ CSV report saved to '{args.csv}'")
+
+    if args.html:
+        export_html(
+            args.html,
+            results,
+            meta={
+                "network": str(network),
+                "hosts_scanned": len(hosts),
+                "duration_seconds": end - start,
+            },
+        )
+        print(Fore.GREEN + f"✓ HTML report saved to '{args.html}'")
 
 
 if __name__ == "__main__":
