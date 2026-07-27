@@ -15,6 +15,7 @@ from scanner.discovery import (
 from scanner.ports import scan_ports
 from scanner.network import detect_local_network
 from scanner.exporter import export_json, export_csv
+from scanner.config import load_config
 
 # Initialize Colorama
 init(autoreset=True)
@@ -57,7 +58,19 @@ def main():
         help="Export scan results to a CSV file"
     )
 
+    parser.add_argument(
+        "--config",
+        metavar="FILE",
+        help="Path to a JSON config file (ports, timeouts, concurrency)"
+    )
+
     args = parser.parse_args()
+
+    try:
+        config = load_config(args.config)
+    except (FileNotFoundError, ValueError) as e:
+        print(Fore.RED + f"✗ {e}")
+        return
 
     # Determine target network
     if args.auto:
@@ -84,7 +97,12 @@ def main():
 
     start = time.perf_counter()
 
-    online_hosts = discover_hosts(hosts)
+    online_hosts = discover_hosts(
+        hosts,
+        max_concurrency=config["host_concurrency"],
+        ping_timeout=config["ping_timeout"],
+        tcp_timeout=config["tcp_timeout"],
+    )
 
     end = time.perf_counter()
 
@@ -99,7 +117,12 @@ def main():
 
         for host in online_hosts:
             hostname = get_hostname(host)
-            ports = scan_ports(host)
+            ports = scan_ports(
+                host,
+                ports=config["ports"],
+                timeout=config["port_timeout"],
+                max_concurrency=config["port_concurrency"],
+            )
 
             port_text = (
                 ", ".join(f"{p['port']}/{p['service']}" for p in ports)

@@ -89,20 +89,23 @@ def get_hostname(host):
         return "Unknown"
 
 
-async def _check_host(host, semaphore):
+async def _check_host(host, semaphore, ping_timeout, tcp_timeout):
     async with semaphore:
-        if await _ping_alive(host):
+        if await _ping_alive(host, timeout=ping_timeout):
             return host
 
-        if await _tcp_probe(host):
+        if await _tcp_probe(host, timeout=tcp_timeout):
             return host
 
         return None
 
 
-async def _discover_hosts_async(hosts, max_concurrency=200):
+async def _discover_hosts_async(hosts, max_concurrency, ping_timeout, tcp_timeout):
     semaphore = asyncio.Semaphore(max_concurrency)
-    tasks = [asyncio.ensure_future(_check_host(host, semaphore)) for host in hosts]
+    tasks = [
+        asyncio.ensure_future(_check_host(host, semaphore, ping_timeout, tcp_timeout))
+        for host in hosts
+    ]
 
     online_hosts = []
 
@@ -119,10 +122,12 @@ async def _discover_hosts_async(hosts, max_concurrency=200):
     return online_hosts
 
 
-def discover_hosts(hosts):
+def discover_hosts(hosts, max_concurrency=200, ping_timeout=0.5, tcp_timeout=0.3):
     """
     Discover which hosts are online. Sync entry point that runs the
     asyncio-based scan underneath for much higher concurrency than the
     old thread-pool implementation.
     """
-    return asyncio.run(_discover_hosts_async(hosts))
+    return asyncio.run(
+        _discover_hosts_async(hosts, max_concurrency, ping_timeout, tcp_timeout)
+    )

@@ -1,0 +1,8 @@
+{
+    "ports": [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 8080],
+    "port_timeout": 0.5,
+    "port_concurrency": 50,
+    "host_concurrency": 200,
+    "ping_timeout": 0.5,
+    "tcp_timeout": 0.3
+}
