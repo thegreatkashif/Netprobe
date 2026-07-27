@@ -1,9 +1,12 @@
+import asyncio
 import ipaddress
 import platform
-import subprocess
-from concurrent.futures import ThreadPoolExecutor
 import socket
-from tqdm import tqdm 
+
+from tqdm import tqdm
+
+COMMON_PROBE_PORTS = (22, 80, 443, 445, 3389)
+
 
 def validate_network(network: str):
     """
@@ -23,41 +26,51 @@ def generate_hosts(network):
     return list(network.hosts())
 
 
-def is_host_alive(host):
-    param = "-n" if platform.system().lower() == "windows" else "-c"
+async def _ping_alive(host, timeout=0.5):
+    """
+    Async ICMP liveness check via the system ping binary.
+    """
+    system = platform.system().lower()
 
-    command = ["ping", param, "1", "-w", "500", str(host)]
-
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True
-    )
-
-    output = result.stdout.lower()
-
-    if platform.system().lower() == "windows":
-        return "ttl=" in output
+    if system == "windows":
+        command = ["ping", "-n", "1", "-w", str(int(timeout * 1000)), str(host)]
     else:
-        return "1 received" in output or "bytes from" in output
+        command = ["ping", "-c", "1", "-W", str(max(1, int(timeout))), str(host)]
 
-def tcp_probe(host):
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 1)
+    except (asyncio.TimeoutError, OSError):
+        return False
+
+    output = stdout.decode(errors="ignore").lower()
+
+    if system == "windows":
+        return "ttl=" in output
+    return "1 received" in output or "bytes from" in output
+
+
+async def _tcp_probe(host, ports=COMMON_PROBE_PORTS, timeout=0.3):
     """
     Returns True if any common TCP port accepts a connection.
     """
-
-    common_ports = [22, 80, 443, 445, 3389]
-
-    for port in common_ports:
+    for port in ports:
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(0.3)
-
-                if sock.connect_ex((str(host), port)) == 0:
-                    return True
-
-        except OSError:
-            pass
+            _, writer = await asyncio.wait_for(
+                asyncio.open_connection(str(host), port), timeout=timeout
+            )
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+            return True
+        except (asyncio.TimeoutError, OSError):
+            continue
 
     return False
 
@@ -75,32 +88,41 @@ def get_hostname(host):
     except Exception:
         return "Unknown"
 
-from concurrent.futures import ThreadPoolExecutor
-from tqdm import tqdm
 
-
-def discover_hosts(hosts):
-    online_hosts = []
-
-    def check(host):
-        if is_host_alive(host):
+async def _check_host(host, semaphore):
+    async with semaphore:
+        if await _ping_alive(host):
             return host
 
-        if tcp_probe(host):
+        if await _tcp_probe(host):
             return host
 
         return None
 
-    with ThreadPoolExecutor(max_workers=100) as executor:
-        results = executor.map(check, hosts)
 
-        for result in tqdm(
-            results,
-            total=len(hosts),
-            desc="Scanning Hosts",
-            unit="host"
-        ):
-            if result is not None:
-                online_hosts.append(result)
+async def _discover_hosts_async(hosts, max_concurrency=200):
+    semaphore = asyncio.Semaphore(max_concurrency)
+    tasks = [asyncio.ensure_future(_check_host(host, semaphore)) for host in hosts]
+
+    online_hosts = []
+
+    for coro in tqdm(
+        asyncio.as_completed(tasks),
+        total=len(tasks),
+        desc="Scanning Hosts",
+        unit="host",
+    ):
+        result = await coro
+        if result is not None:
+            online_hosts.append(result)
 
     return online_hosts
+
+
+def discover_hosts(hosts):
+    """
+    Discover which hosts are online. Sync entry point that runs the
+    asyncio-based scan underneath for much higher concurrency than the
+    old thread-pool implementation.
+    """
+    return asyncio.run(_discover_hosts_async(hosts))
