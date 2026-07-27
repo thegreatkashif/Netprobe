@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 
 import argparse
@@ -101,7 +101,10 @@ def main():
             hostname = get_hostname(host)
             ports = scan_ports(host)
 
-            port_text = ", ".join(map(str, ports)) if ports else "None"
+            port_text = (
+                ", ".join(f"{p['port']}/{p['service']}" for p in ports)
+                if ports else "None"
+            )
 
             print(
                 Fore.GREEN
@@ -109,6 +112,10 @@ def main():
                 + Style.RESET_ALL
                 + f"{hostname:<25} {port_text}"
             )
+
+            for p in ports:
+                if p["banner"]:
+                    print(Fore.BLUE + f"    └─ {p['port']}: {p['banner']}")
 
             results.append(
                 {
